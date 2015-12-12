@@ -1,0 +1,420 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>FB Vizualizer</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #cccccc;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+
+			a {
+				color: #0080ff;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div class="head">
+			<fb:login-button autologoutlink="true" scope="public_profile,email,user_friends" onlogin="checkLoginState();"></fb:login-button>
+			<input type="number" id="particles" value="">
+			<div id="button">
+				<img src="" id="profile_picture">	
+			</div>						
+		</div>
+		<div id="container"></div>
+		
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js"></script>	
+		<script src="js/build/dat.gui.min.js"></script>
+		<script src="js/three.min.js"></script>
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/stats.min.js"></script>
+
+		<script>
+			
+			var friends = 0;
+			var picture = 0;
+		  // This is called with the results from from FB.getLoginStatus().
+		  function statusChangeCallback(response) {
+		    console.log('statusChangeCallback');
+		    console.log(response);
+		    // The response object is returned with a status field that lets the
+		    // app know the current login status of the person.
+		    // Full docs on the response object can be found in the documentation
+		    // for FB.getLoginStatus().
+		    if (response.status === 'connected') {
+		      // Logged into your app and Facebook.
+		      getFriendsCount();
+				setTimeout(
+				  function() 
+				  {
+				    //wait for api response
+				  }, 2000);      
+		      getProfilePicture();
+		    } else if (response.status === 'not_authorized') {
+		      // The person is logged into Facebook, but not your app.
+		      document.getElementById('status').innerHTML = 'Please log ' +
+		        'into this app.';
+		    } else {
+		      // The person is not logged into Facebook, so we're not sure if
+		      // they are logged into this app or not.
+		      document.getElementById('status').innerHTML = 'Please log ' +
+		        'into Facebook.';
+		    }
+		  }
+		
+		  // This function is called when someone finishes with the Login
+		  // Button.  See the onlogin handler attached to it in the sample
+		  // code below.
+		  function checkLoginState() {
+		    FB.getLoginStatus(function(response) {
+		      statusChangeCallback(response);
+		    });
+		  }
+		
+		  window.fbAsyncInit = function() {
+		  FB.init({
+		    appId      : '424781091049383',
+		    cookie     : true,  // enable cookies to allow the server to access 
+		                        // the session
+		    xfbml      : true,  // parse social plugins on this page
+		    version    : 'v2.2' // use version 2.2
+		  });
+		
+		  // Now that we've initialized the JavaScript SDK, we call 
+		  // FB.getLoginStatus().  This function gets the state of the
+		  // person visiting this page and can return one of three states to
+		  // the callback you provide.  They can be:
+		  //
+		  // 1. Logged into your app ('connected')
+		  // 2. Logged into Facebook, but not your app ('not_authorized')
+		  // 3. Not logged into Facebook and can't tell if they are logged into
+		  //    your app or not.
+		  //
+		  // These three cases are handled in the callback function.
+		
+		  FB.getLoginStatus(function(response) {
+		    statusChangeCallback(response);
+		  });
+		
+		  };
+		
+		  // Load the SDK asynchronously
+		  (function(d, s, id) {
+		    var js, fjs = d.getElementsByTagName(s)[0];
+		    if (d.getElementById(id)) return;
+		    js = d.createElement(s); js.id = id;
+		    js.src = "//connect.facebook.net/en_US/sdk.js";
+		    fjs.parentNode.insertBefore(js, fjs);
+		  }(document, 'script', 'facebook-jssdk'));
+		
+		  // Here we run a very simple test of the Graph API after login is
+		  // successful.  See statusChangeCallback() for when this call is made.
+		  function getFriendsCount() {
+		    console.log('Welcome!  Retrieving your amount of friends ');
+			FB.api(
+			  '/me/friends',
+			  function(response) {
+				 friends = response['summary']['total_count'];
+			     console.log("You have "+friends+" friends");
+			     $("#particles").val(friends);
+			     draw(friends);
+			     $("#particles").trigger("change");
+			  }
+			);	
+		  }
+		  
+		  function getProfilePicture() {
+		    console.log('Welcome!  Retrieving your profile picture ');
+		  	FB.api(
+			  '/me/picture',
+			  function(response) {
+				 picture = response['data']['url'];
+			     console.log(picture);
+			     $("#profile_picture").attr('src', picture);
+			  }
+			);	
+		  }		  
+
+		  function logout(){
+			FB.logout(function(response) {
+			  $("#profile_picture").removeAttribute('src');
+			  console.log("Succesvol uitgelogd!");
+			  draw(0);
+			});			  
+		  }
+		  
+		  function draw(number){
+			  friends = parseInt(number);
+			  particles.setDrawRange( 0,friends);			  
+		  }
+
+				setTimeout(
+				  function() 
+				  {
+				    //wait for api response
+				  }, 5000);    
+
+			var group;
+			var container, controls, stats;
+			var particlesData = [];
+			var camera, scene, renderer;
+			var positions, colors;
+			var particles;
+			var particleCount = 0;
+			var pointCloud;
+			var particlePositions;
+			var linesMesh;
+
+			var maxParticleCount = 3000;
+			
+			var r = 800;
+			var rHalf = r / 2;
+
+			var effectController = {
+				showDots: true,
+				showLines: true,
+				minDistance: 150,
+				limitConnections: false,
+				maxConnections: 20,
+				particleCount: 500
+			};
+
+			init();
+			animate();
+
+			function initGUI() {
+
+
+				$("#particles").change( function( value ) {
+					particleCount = parseInt($("#particles").val());
+					particles.setDrawRange( 0, particleCount );
+
+				});
+
+			}
+
+			function init() {
+				initGUI();
+
+				container = document.getElementById( 'container' );
+
+				//
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 4000 );
+				camera.position.z = 1750;
+
+				controls = new THREE.OrbitControls( camera, container );
+
+				scene = new THREE.Scene();
+
+
+				group = new THREE.Group();
+				scene.add( group );
+
+				var helper = new THREE.BoxHelper( new THREE.Mesh( new THREE.BoxGeometry( r, r, r ) ) );
+				helper.material.color.setHex( 0xffff00 );
+				helper.material.blending = THREE.AdditiveBlending;
+				helper.material.transparent = true;
+				group.add( helper );
+
+				var segments = maxParticleCount * maxParticleCount;
+
+				positions = new Float32Array( segments * 3 );
+				colors = new Float32Array( segments * 3 );
+
+				var pMaterial = new THREE.PointsMaterial( {
+					color: 0xffff00,
+					size: 7,
+					blending: THREE.AdditiveBlending,
+					transparent: true,
+					sizeAttenuation: false
+				} );
+
+				particles = new THREE.BufferGeometry();
+				particlePositions = new Float32Array( maxParticleCount * 3 );
+
+				for ( var i = 0; i < maxParticleCount; i++ ) {
+
+					var x = Math.random() * r - r / 2;
+					var y = Math.random() * r - r / 2;
+					var z = Math.random() * r - r / 2;
+
+					particlePositions[ i * 3     ] = x;
+					particlePositions[ i * 3 + 1 ] = y;
+					particlePositions[ i * 3 + 2 ] = z;
+
+					// add it to the geometry
+					particlesData.push( {
+						velocity: new THREE.Vector3( -1 + Math.random() * 2, -1 + Math.random() * 2,  -1 + Math.random() * 2 ),
+						numConnections: 0
+					} );
+
+				}
+
+				particles.setDrawRange( 0, particleCount );
+				particles.addAttribute( 'position', new THREE.BufferAttribute( particlePositions, 3 ).setDynamic( true ) );
+
+				// create the particle system
+				pointCloud = new THREE.Points( particles, pMaterial );
+				group.add( pointCloud );
+
+				var geometry = new THREE.BufferGeometry();
+
+				geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ).setDynamic( true ) );
+				geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ).setDynamic( true ) );
+
+				geometry.computeBoundingSphere();
+
+				geometry.setDrawRange( 0, 0 );
+
+				var material = new THREE.LineBasicMaterial( {
+					vertexColors: THREE.VertexColors,
+					blending: THREE.AdditiveBlending,
+					transparent: true
+				} );
+
+				linesMesh = new THREE.LineSegments( geometry, material );
+				group.add( linesMesh );
+
+				//
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+
+				container.appendChild( renderer.domElement );
+
+				//
+
+				stats = new Stats();
+				stats.domElement.style.position = 'absolute';
+				stats.domElement.style.top = '0px';
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+
+				var vertexpos = 0;
+				var colorpos = 0;
+				var numConnected = 0;
+
+				for ( var i = 0; i < particleCount; i++ )
+					particlesData[ i ].numConnections = 0;
+
+				for ( var i = 0; i < particleCount; i++ ) {
+
+					// get the particle
+					var particleData = particlesData[i];
+
+					particlePositions[ i * 3     ] += particleData.velocity.x;
+					particlePositions[ i * 3 + 1 ] += particleData.velocity.y;
+					particlePositions[ i * 3 + 2 ] += particleData.velocity.z;
+
+					if ( particlePositions[ i * 3 + 1 ] < -rHalf || particlePositions[ i * 3 + 1 ] > rHalf )
+						particleData.velocity.y = -particleData.velocity.y;
+
+					if ( particlePositions[ i * 3 ] < -rHalf || particlePositions[ i * 3 ] > rHalf )
+						particleData.velocity.x = -particleData.velocity.x;
+
+					if ( particlePositions[ i * 3 + 2 ] < -rHalf || particlePositions[ i * 3 + 2 ] > rHalf )
+						particleData.velocity.z = -particleData.velocity.z;
+
+					if ( effectController.limitConnections && particleData.numConnections >= effectController.maxConnections )
+						continue;
+
+					// Check collision
+					for ( var j = i + 1; j < particleCount; j++ ) {
+
+						var particleDataB = particlesData[ j ];
+						if ( effectController.limitConnections && particleDataB.numConnections >= effectController.maxConnections )
+							continue;
+
+						var dx = particlePositions[ i * 3     ] - particlePositions[ j * 3     ];
+						var dy = particlePositions[ i * 3 + 1 ] - particlePositions[ j * 3 + 1 ];
+						var dz = particlePositions[ i * 3 + 2 ] - particlePositions[ j * 3 + 2 ];
+						var dist = Math.sqrt( dx * dx + dy * dy + dz * dz );
+
+						if ( dist < effectController.minDistance ) {
+
+							particleData.numConnections++;
+							particleDataB.numConnections++;
+
+							var alpha = 1.0 - dist / effectController.minDistance;
+
+							positions[ vertexpos++ ] = particlePositions[ i * 3     ];
+							positions[ vertexpos++ ] = particlePositions[ i * 3 + 1 ];
+							positions[ vertexpos++ ] = particlePositions[ i * 3 + 2 ];
+
+							positions[ vertexpos++ ] = particlePositions[ j * 3     ];
+							positions[ vertexpos++ ] = particlePositions[ j * 3 + 1 ];
+							positions[ vertexpos++ ] = particlePositions[ j * 3 + 2 ];
+
+							colors[ colorpos++ ] = alpha;
+							colors[ colorpos++ ] = alpha;
+							colors[ colorpos++ ] = alpha;
+
+							colors[ colorpos++ ] = alpha;
+							colors[ colorpos++ ] = alpha;
+							colors[ colorpos++ ] = alpha;
+
+							numConnected++;
+						}
+					}
+				}
+
+
+				linesMesh.geometry.setDrawRange( 0, numConnected * 2 );
+				linesMesh.geometry.attributes.position.needsUpdate = true;
+				linesMesh.geometry.attributes.color.needsUpdate = true;
+
+				pointCloud.geometry.attributes.position.needsUpdate = true;
+
+				requestAnimationFrame( animate );
+
+				stats.update();
+				render();
+
+			}
+
+			function render() {
+
+				var time = Date.now() * 0.001;
+
+				group.rotation.y = time * 0.1;
+				renderer.render( scene, camera );
+
+			}
+		</script>
+	</body>
+</html>
